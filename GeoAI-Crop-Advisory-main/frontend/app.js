@@ -1,3 +1,4 @@
+const API_BASE_URL = "https://geoai-backend-5vwx.onrender.com";
 // Initialize Map
 const map = L.map('map').setView([25.4484, 78.5685], 13); // Centered near Jhansi as default
 
