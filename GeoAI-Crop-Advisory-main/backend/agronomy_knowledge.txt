@@ -1,0 +1,32 @@
+# Agronomy Knowledge Base for Crop Advisory
+
+## NDVI (Normalized Difference Vegetation Index) Thresholds
+- **Low (< 0.2):** Bare soil or dead vegetation. Suggests land preparation or harvesting is complete.
+- **Moderate (0.2 - 0.4):** Early growth stages or sparse vegetation. Possible moisture stress if observed during mid-season.
+- **High (0.4 - 0.7):** Healthy, actively growing crops. Peak vegetative phase.
+- **Very High (> 0.7):** Dense canopy. Ideal for late vegetative or early reproductive stages.
+
+## LSWI (Land Surface Water Index) Thresholds
+- **LSWI > 0.1:** Adequate surface moisture for most crops.
+- **LSWI < 0.0:** Indicates water stress or dry soil conditions. Irrigation is highly recommended.
+- **LSWI trend:** If LSWI is decreasing while NDVI is high, it indicates possible terminal heat stress or drought.
+
+## Soil Moisture Proxy
+- **Calculation:** Max(0, 0.8 - NDVI) is a simplified proxy. 
+- **High Proxy Value (> 0.5):** Indicates high soil exposure, likely before sowing or after harvest.
+- **Low Proxy Value (< 0.3):** Indicates high canopy cover, which protects soil moisture but increases transpiration demand.
+
+## Crop Phenology Stages
+- **Green-up / Sowing Date:** Detected when NDVI crosses 0.25 and shows a sustained upward trend.
+- **Peak NDVI:** Represents the flowering/reproduction stage.
+- **Senescence / Harvest Date:** Detected when NDVI drops below 0.3 after the seasonal peak.
+
+## Insurance Risk Factors
+- **Drought Risk:** Sustained low LSWI (< 0.1) during peak vegetative stage (NDVI > 0.5).
+- **Yield Loss Risk:** Significant drop in NDVI compared to the regional average or historical peak.
+- **Delayed Sowing:** Sowing date later than the historical window increases risk of heat stress during grain filling.
+
+## Recommended Actions
+- **If NDVI is low and LSWI is low:** Consider emergency irrigation or soil moisture conservation techniques.
+- **If NDVI is high but LSWI is dropping:** Apply light irrigation to prevent moisture stress.
+- **If NDVI is decreasing rapidly:** Monitor for pests or diseases; check for premature senescence.

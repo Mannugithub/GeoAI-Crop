@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoAI Advisory Portal</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css" />
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>GeoAI Advisory Portal</h1>
+            <p>Draw a polygon over a farm plot to receive AI-driven agricultural advisory based on Sentinel-2 data.</p>
+        </header>
+        
+        <main>
+            <div id="map"></div>
+            
+            <aside id="side-panel">
+                <h2>Analysis Results</h2>
+                
+                <div class="map-controls">
+                    <div id="cloud-fetch-ui">
+                        <h3>Fetch Sentinel-2 via STAC/AWS</h3>
+                        <div style="margin-bottom: 10px;">
+                            <label>Season:</label>
+                            <select id="season-select" style="width: 100%; padding: 5px; margin-bottom: 5px;">
+                                <option value="kharif">Kharif (June - Oct)</option>
+                                <option value="rabi">Rabi (Oct - April)</option>
+                                <option value="custom">Custom Date Range</option>
+                            </select>
+                            <div id="custom-dates" class="hidden">
+                                <input type="date" id="start-date" style="width: 45%;"> to 
+                                <input type="date" id="end-date" style="width: 45%;">
+                            </div>
+
+                            <label style="margin-top:8px; display:block;">
+                                ☁️ Max Cloud Cover: <strong><span id="cloud-val">20</span>%</strong>
+                            </label>
+                            <input type="range" id="cloud-cover" min="1" max="90" value="20"
+                                style="width:100%; margin-bottom:8px;">
+
+                            <!-- Step 1: Search -->
+                            <button id="search-scenes-btn" style="width:100%; margin-bottom:6px; background:#1a6b8a; color:white; border:none; padding:9px; border-radius:5px; cursor:pointer; font-weight:600;">
+                                🔍 Search Available Scenes
+                            </button>
+
+                            <!-- Scene results (hidden until search) -->
+                            <div id="scene-results" class="hidden" style="margin-bottom:8px;">
+                                <p id="scene-count-label" style="font-size:0.82em; font-weight:600; margin:4px 0;"></p>
+                                <div id="scene-list" style="max-height:180px; overflow-y:auto; font-size:0.78em; border:1px solid #333; border-radius:5px; padding:4px;"></div>
+                            </div>
+
+                            <!-- Step 2: Fetch (only enabled after search finds scenes) -->
+                            <button id="fetch-cloud-btn" disabled style="width:100%; background:#555; color:#aaa; border:none; padding:9px; border-radius:5px; cursor:not-allowed; font-weight:600;">
+                                ⬇️ Fetch Images
+                            </button>
+                        </div>
+                    </div>
+
+                    <p id="upload-status" style="font-size: 0.85em; color: #666; margin-top: 5px;"></p>
+
+                    <!-- Scene thumbnail shown after fetch -->
+                    <div id="scene-info" class="hidden" style="margin-bottom:10px;">
+                        <p style="font-size:0.8em; margin:4px 0; font-weight:600;">📡 Scene Preview</p>
+                        <img id="scene-thumbnail" src="" alt="Scene thumbnail"
+                            style="width:100%; border-radius:6px; border:1px solid #444;">
+                    </div>
+
+                    <h3>Available Layers</h3>
+                    <label style="color: #2ecc71; font-weight: 600;">
+                        <input type="checkbox" id="toggle-ndvi">
+                        Peak NDVI (Clipped to Polygon)
+                    </label>
+                    <label>
+                        <input type="checkbox" id="toggle-raster">
+                        True Color (TCI)
+                    </label>
+                    <label>
+                        <input type="checkbox" id="toggle-fcc">
+                        False Color Composite (FCC)
+                    </label>
+                </div>
+
+                <!-- Minimal Scene Metadata displayed immediately on polygon draw -->
+                <div id="minimum-metadata-card" class="metadata-card hidden" style="margin-top: 1rem;">
+                    <h3>🛰️ Scene Minimal Metadata</h3>
+                    <ul>
+                        <li><strong>Image Name:</strong> <span id="meta-image-name" title="">—</span></li>
+                        <li><strong>Cloud Cover:</strong> <span id="meta-cloud-cover">—</span></li>
+                        <li><strong>Acquisition Date:</strong> <span id="meta-date">—</span></li>
+                    </ul>
+                    <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.6rem; text-align: center;">
+                        💡 Click <strong>Fetch Images</strong> above to load rasters & AI advisory.
+                    </p>
+                </div>
+                
+                <div id="loading" class="hidden">
+                    <div class="spinner"></div>
+                    <p>Processing Sentinel-2 data and generating Gemini advisory...</p>
+                </div>
+
+                <div id="results" class="hidden">
+                    <div class="metrics-card">
+                        <h3>Geospatial Metrics</h3>
+                        <ul>
+                            <li><strong>Mean NDVI:</strong> <span id="val-ndvi"></span></li>
+                            <li><strong>Mean LSWI:</strong> <span id="val-lswi"></span></li>
+                            <li><strong>Est. Sowing Date:</strong> <span id="val-sowing"></span></li>
+                            <li><strong>Est. Harvest Date:</strong> <span id="val-harvest"></span></li>
+                        </ul>
+                    </div>
+
+                    <div class="advisory-card" style="border-left: 4px solid #2ecc71;">
+                        <h3 style="color: #2ecc71;">🧑‍🌾 Farmer Advisory</h3>
+                        <div id="val-advisory"></div>
+                    </div>
+
+                    <div class="advisory-card" style="border-left: 4px solid #e74c3c; margin-top: 15px;">
+                        <h3 style="color: #e74c3c;">🏢 Insurance Risk Assessment</h3>
+                        <div id="val-insurance-advisory"></div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div style="margin-bottom:10px;">
+                            <h3 style="margin:0;">Seasonal NDVI Profile</h3>
+                        </div>
+                        <!-- Season stat badges -->
+                        <div id="ndvi-stats" class="hidden" style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+                            <div style="flex:1; text-align:center; background:rgba(46,204,113,0.15); border:1px solid #2ecc71; border-radius:6px; padding:6px;">
+                                <div style="font-size:0.7em; color:#aaa; text-transform:uppercase; letter-spacing:1px;">Season Peak</div>
+                                <div id="stat-peak" style="font-size:1.5em; font-weight:700; color:#2ecc71;">—</div>
+                            </div>
+                            <div style="flex:1; text-align:center; background:rgba(230,126,34,0.15); border:1px solid #e67e22; border-radius:6px; padding:6px;">
+                                <div style="font-size:0.7em; color:#aaa; text-transform:uppercase; letter-spacing:1px;">Season Min</div>
+                                <div id="stat-min" style="font-size:1.5em; font-weight:700; color:#e67e22;">—</div>
+                            </div>
+                        </div>
+                        <canvas id="ndviChart"></canvas>
+                        <p id="ndvi-chart-msg" style="font-size:0.78em; color:#666; margin-top:6px; text-align:center;">
+                            Fortnightly NDVI will appear after drawing a plot.
+                        </p>
+                    </div>
+                </div>
+                
+                <div id="empty-state">
+                    <p>Draw a plot on the map to begin analysis.</p>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <!-- Leaflet & Chart.js JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/georaster"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js?v=2"></script>
+</body>
+</html>
